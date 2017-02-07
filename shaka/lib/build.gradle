@@ -1,0 +1,74 @@
+import groovy.io.FileType
+import org.apache.tools.ant.filters.ReplaceTokens
+
+import java.nio.charset.StandardCharsets
+import java.nio.file.Files
+import java.nio.file.Paths
+import java.util.zip.CRC32
+
+/**
+ *  Copyright 2015 Rover12421 <rover12421@163.com>
+ *
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+task genShakaAaptCrc32 {
+    /**
+     * 生成ShakaAapt下所有文件的Crc32值到属性文件
+     */
+    def binDir = file('src/main/resources/ShakaAapt')
+    def binDir_len = binDir.absolutePath.length() + 1
+    def ShakaAaptProperties = file('src/main/resources/properties/ShakaAapt.properties')
+    def props = new ArrayList()
+
+    binDir.eachFileRecurse(FileType.FILES) {
+        def crc32 = new CRC32()
+        def buff = new byte[4096]
+        def fis = it.newInputStream()
+        def len
+        while ((len = fis.read(buff)) != -1) {
+            crc32.update(buff, 0, len)
+        }
+        fis.close()
+        String name = it.absolutePath.substring(binDir_len).replace("/", ".").replace("\\", ".")
+        String prop = name + "=" + Long.toHexString(crc32.value)
+        props.add(prop)
+    }
+    Collections.sort(props, new Comparator<String>() {
+        @Override
+        int compare(String s1, String s2) {
+            if (s1.length() == s2.length()) {
+                return s1.compareTo(s2)
+            } else {
+                return s1.length() - s2.length()
+            }
+        }
+    })
+    Files.write(Paths.get(ShakaAaptProperties.absolutePath), props, StandardCharsets.UTF_8)
+}
+
+processResources {
+    from('src/main/resources/properties') {
+        include '**/*.properties'
+        into 'properties'
+        filter(ReplaceTokens, tokens: [shakaVersion: shakaVersion.toString(), shakaDebug: shakaDebug.toString()] )
+    }
+}
+
+processResources.dependsOn genShakaAaptCrc32
+
+dependencies {
+    compile depends.commons_cli,
+            depends.commons_io,
+            depends.commons_compress
+}
