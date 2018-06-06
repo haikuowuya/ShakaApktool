@@ -1,0 +1,91 @@
+/**
+ *  Copyright 2015 Rover12421 <rover12421@163.com>
+ *
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+import org.apache.tools.ant.filters.*
+
+def apktoolversion_major = '2.0.1'
+def apktoolversion_minor = 'SNAPSHOT'
+
+def branch = getCheckedOutBranchFromModule('apktool')
+def hash   = getCheckedOutGitCommitHashFromModule('apktool')
+ext.apktoolHash = "$branch-$hash"
+ext.apktoolVersion = "$apktoolversion_major-$apktoolversion_minor-$apktoolHash"
+
+sourceSets {
+    main {
+        java {
+            srcDirs = [
+                        'src/main/java',
+                        'apktool/brut.j.common/src/main/java',
+                        'apktool/brut.j.util/src/main/java',
+                        'apktool/brut.j.dir/src/main/java',
+                        'apktool/brut.apktool/apktool-lib/src/main/java',
+                        'apktool/brut.apktool/apktool-cli/src/main/java'
+                    ]
+        }
+        resources {
+            srcDirs = [
+                        'src/main/resources',
+                        'apktool/brut.j.common/src/main/resources',
+                        'apktool/brut.j.util/src/main/resources',
+                        'apktool/brut.j.dir/src/main/resources',
+                        'apktool/brut.apktool/apktool-lib/src/main/resources',
+                        'apktool/brut.apktool/apktool-cli/src/main/resources'
+                    ]
+            exclude '**/prebuilt/**'
+        }
+    }
+
+    test {
+        java {
+            srcDirs = [
+                        'src/test/java',
+                        'apktool/brut.apktool/apktool-lib/src/test/java',
+                    ]
+        }
+        resources {
+            srcDirs = [
+                        'src/test/resources',
+                        'apktool/brut.j.common/src/test/resources',
+                        'apktool/brut.j.util/src/test/resources',
+                        'apktool/brut.j.dir/src/test/resources',
+                        'apktool/brut.apktool/apktool-lib/src/test/resources',
+                        'apktool/brut.apktool/apktool-cli/src/test/resources'
+                    ]
+        }
+    }
+}
+
+processResources {
+    from('apktool/brut.apktool/apktool-lib/src/main/resources/properties') {
+        include '**/*.properties'
+        into 'properties'
+        filter(ReplaceTokens, tokens: [version: apktoolVersion.toString(), gitrev: apktoolHash.toString()] )
+    }
+}
+
+dependencies {
+    compile project(':shaka.smali'),
+            depends.snakeyaml,
+            depends.xmlpull,
+            depends.guava,
+            depends.commons_lang,
+            depends.commons_io,
+            depends.commons_cli,
+            depends.antlr
+
+    testCompile depends.xmlunit
+}
